@@ -3,7 +3,7 @@ defmodule Postgrex.Extensions.Date do
   import Postgrex.BinaryUtils, warn: false
   use Postgrex.BinaryExtension, send: "date_send"
 
-  @gd_epoch :calendar.date_to_gregorian_days({2000, 1, 1})
+  @gd_epoch Date.to_gregorian_days(~D[2000-01-01])
   @max_year 9999
   @max_days 3_652_424
 
@@ -28,7 +28,7 @@ defmodule Postgrex.Extensions.Date do
 
   def encode_elixir(%Date{year: year, month: month, day: day}) when year <= @max_year do
     date = {year, month, day}
-    <<4::int32, :calendar.date_to_gregorian_days(date) - @gd_epoch::int32>>
+    <<4::int32, Date.to_gregorian_days(date) - @gd_epoch::int32>>
   end
 
   def encode_elixir(%Date{} = date) do
@@ -38,13 +38,13 @@ defmodule Postgrex.Extensions.Date do
   def day_to_elixir(days) do
     days = days + @gd_epoch
 
-    if days in 0..@max_days do
+    if days in -1*@max_days..@max_days do
       days
-      |> :calendar.gregorian_days_to_date()
+      |> Date.from_gregorian_days()
       |> Date.from_erl!()
     else
       raise ArgumentError,
-            "Postgrex can only decode dates with days between 0 and #{@max_days}, " <>
+            "Postgrex can only decode dates with days between #{-1*@max_days} and #{@max_days}, " <>
               "got: #{inspect(days)}"
     end
   end
