@@ -44,9 +44,12 @@ defmodule Postgrex.Extensions.Timestamp do
       })
       when year <= @max_year and hour in 0..23 and min in 0..59 and sec in 0..59 and
              usec in 0..999_999 do
-    datetime = {{year, month, day}, {hour, min, sec}}
-    datetime_gregorian_seconds = DateTime.to_gregorian_seconds(datetime) |> elem(0)
-    secs = datetime_gregorian_seconds - @gs_epoch
+    erl_datetime = {{year, month, day}, {hour, min, sec}}
+    #secs = :calendar.datetime_to_gregorian_seconds(datetime) - @gs_epoch
+    {gregorian_seconds, _gregorian_microseconds} =
+      NaiveDateTime.from_erl!(erl_datetime)
+      |> NaiveDateTime.to_gregorian_seconds
+    secs = gregorian_seconds - @gs_epoch
     <<8::int32, secs * 1_000_000 + usec::int64>>
   end
 
@@ -76,7 +79,9 @@ defmodule Postgrex.Extensions.Timestamp do
   end
 
   defp split(secs, microsecs) do
-    {DateTime.from_gregorian_seconds(secs + @gs_epoch), microsecs}
+    naive_datetime = NaiveDateTime.from_gregorian_seconds(secs + @gs_epoch)
+
+    {NaiveDateTime.to_erl(naive_datetime), microsecs}
   end
 
   defp raise_infinity(type) do
